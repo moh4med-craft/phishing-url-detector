@@ -94,6 +94,8 @@ Il n'a aucune notion de la structure d'une URL : il mémorise des sous-chaînes 
 
 **Un hameçonnage sur cinq passe.** 78,7 % de rappel signifie 21,3 % de faux négatifs sur le test interne, et 26,9 % sur du hameçonnage frais collecté six ans après le corpus d'entraînement. La dégradation est réelle : les campagnes actuelles abusent d'hébergeurs légitimes (`netlify.app`, `pages.dev`) absents du corpus.
 
+**13,5 % de faux positifs sur des URLs légitimes réelles.** Le 1,2 % mesuré sur Tranco flatte le modèle : Tranco ne contient que des **domaines nus**, sans chemin ni paramètres. Sur les URLs légitimes complètes du jeu de test (n = 793), le taux monte à **13,5 %**. Exemple concret : `https://github.com/moh4med-craft` est classé hameçonnage à 0,751 — un tiret et un chiffre dans le chemin suffisent à le faire basculer. Plusieurs URLs banales se situent d'ailleurs juste sous le seuil (`amazon.fr/dp/…` à 0,444, `google.com/search?q=…` à 0,466) : le modèle est peu confiant sur du trafic ordinaire, et un déploiement réel exigerait une liste d'exclusion des domaines de premier plan.
+
 **Les URLs relatives au protocole.** `//evil.com` produit un hôte vide : `urlsplit` ne sait pas interpréter `http:////evil.com`.
 
 **Les IP obfusquées.** `http://0177.0.0.1/` (octal) et `http://2130706433/` (décimal) échappent à la détection d'IP, qui n'accepte que la notation décimale pointée canonique.
