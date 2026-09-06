@@ -18,6 +18,10 @@ Le hameçonnage repose sur des URLs qui imitent des marques légitimes tout en r
 
 **MLflow** pour tracer les configurations comparées. **FastAPI** pour la validation Pydantic et la documentation automatiques, avec le modèle chargé une seule fois au démarrage via `lifespan`. **Docker multi-étapes** : l'étape de construction installe les dépendances, l'étape finale repart d'une base propre et ne copie que les paquets installés. Mesuré contre une version naïve (base complète, une seule étape, outillage de développement embarqué) : **720 Mo contre 3,24 Go**, soit 4,5 fois moins. L'image finale ne contient ni `gcc`, ni `pip`, ni `pytest`, ni `mlflow`, et le processus tourne en utilisateur non privilégié.
 
+**GitHub Actions** : `lint` (ruff) et `test` (pytest) tournent en parallèle, puis `docker` seulement si les deux passent — on ne construit pas d'image à partir de code cassé. Le job Docker ne se contente pas de construire : il vérifie que le processus tourne en `appuser`, que `gcc`, `pytest` et `mlflow` sont absents de l'image, et que l'API répond correctement à une vraie requête.
+
+Deux choix assumés côté outillage. Le **modèle est versionné dans le dépôt** (7,6 Mo compressés) pour que `docker compose up` fonctionne après un simple clone ; git n'est pas fait pour les binaires, mais à cette taille le compromis est raisonnable — en production, ce serait un registre de modèles. Et le **formateur automatique n'est pas imposé**, seul le linter l'est : `ruff format` éclaterait les tables de référence (TLD abusés, raccourcisseurs, suffixes composés) à raison d'une entrée par ligne, ce qui les rendrait moins lisibles. Le linter attrape de vrais défauts, le formateur n'est qu'une convention de style.
+
 ### Corpus
 
 | Jeu | Rôle |
@@ -78,6 +82,8 @@ PhishTank et Tranco servent **uniquement** à l'évaluation externe. Les utilise
 | Aléatoire | 0,9538 ± 0,0045 |
 
 Le découpage aléatoire **surestime le modèle de 4,9 points** de PR-AUC. Il produit aussi un écart-type cinq fois plus faible : non seulement il flatte le score, mais il donne une fausse impression de stabilité, parce que chaque tirage réévalue les mêmes domaines.
+
+![POST /predict exécuté depuis /docs](docs/api_predict.png)
 
 **API et latence.** `POST /predict` répond en **11,8 ms** de bout en bout, `POST /predict/batch` en **0,12 ms par URL** sur un lot de 100. Le modèle est chargé une fois au démarrage (`lifespan`), en 0,1 s ; l'extraction des caractéristiques coûte 19 µs.
 

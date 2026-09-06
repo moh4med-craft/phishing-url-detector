@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Droits minimaux : le workflow ne fait que lire le dépôt.
+permissions:
+  contents: read
+
+# Une poussée qui en remplace une autre annule la précédente : pas de files
+# d'attente inutiles ni de minutes gaspillées.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14"
+
+jobs:
+  # --------------------------------------------------------------------- #
+  # lint et test tournent EN PARALLÈLE : ils sont indépendants.
+  # --------------------------------------------------------------------- #
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Le linter seul : inutile d'installer scikit-learn pour vérifier le style.
+      - name: Installer ruff
+        run: pip install ruff==0.16.6
+
+      - name: Analyse statique
+        run: ruff check --output-format=github .
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -e .
+
+      # La CI part d'une machine vierge : elle attrape ce que la machine de
+      # développement masque — dépendance oubliée, chemin absolu codé en dur,
+      # fichier non commité.
+      - name: Tests
+        run: pytest -v
+
+  # --------------------------------------------------------------------- #
+  # On ne construit pas d'image à partir de code cassé.
+  # --------------------------------------------------------------------- #
+  docker:
+    name: Image Docker
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construire l'image
+        run: docker build -t phishing-url-detector:ci .
+
+      - name: Taille de l'image
+        run: docker images phishing-url-detector:ci --format '{{.Size}}'
+
+      - name: Le processus ne tourne pas en root
+        run: |
+          user=$(docker run --rm phishing-url-detector:ci whoami)
+          echo "utilisateur : $user"
+          test "$user" = "appuser"
+
+      - name: L'outillage de construction est absent de l'image finale
+        run: |
+          ! docker run --rm phishing-url-detector:ci sh -c 'command -v gcc'
+          ! docker run --rm phishing-url-detector:ci python -c 'import pytest'
+          ! docker run --rm phishing-url-detector:ci python -c 'import mlflow'
+
+      - name: Démarrer le conteneur
+        run: docker run -d --name api -p 8000:8000 phishing-url-detector:ci
+
+      - name: L'API répond et prédit correctement
+        run: |
+          curl -sf --retry 30 --retry-delay 1 --retry-connrefused localhost:8000/health
+          reponse=$(curl -sf -X POST localhost:8000/predict \
+            -H 'Content-Type: application/json' \
+            -d '{"url":"http://paypal.com.secure-verify.tk/login?id=1"}')
+          echo "$reponse"
+          echo "$reponse" | grep -q '"label":"phishing"'
+
+      - name: Journaux du conteneur en cas d'échec
+        if: failure()
+        run: docker logs api
