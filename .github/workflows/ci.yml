@@ -27,9 +27,9 @@ jobs:
     name: Lint (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -44,9 +44,9 @@ jobs:
     name: Tests (pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -71,7 +71,7 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Construire l'image
         run: docker build -t phishing-url-detector:ci .
@@ -94,10 +94,16 @@ jobs:
       - name: Démarrer le conteneur
         run: docker run -d --name api -p 8000:8000 phishing-url-detector:ci
 
+      # --retry-all-errors est indispensable ici : Docker publie le port dès le
+      # lancement, donc la connexion est ACCEPTÉE puis coupée tant qu'uvicorn
+      # n'écoute pas encore. curl renvoie alors 56 (erreur de réception), que
+      # --retry-connrefused ne couvre pas — il ne réessaie que sur un refus.
       - name: L'API répond et prédit correctement
         run: |
-          curl -sf --retry 30 --retry-delay 1 --retry-connrefused localhost:8000/health
-          reponse=$(curl -sf -X POST localhost:8000/predict \
+          curl -sf --retry 30 --retry-delay 2 --retry-connrefused --retry-all-errors \
+            localhost:8000/health
+          reponse=$(curl -sf --retry 5 --retry-delay 2 --retry-all-errors \
+            -X POST localhost:8000/predict \
             -H 'Content-Type: application/json' \
             -d '{"url":"http://paypal.com.secure-verify.tk/login?id=1"}')
           echo "$reponse"
