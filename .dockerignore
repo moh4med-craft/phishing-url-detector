@@ -1,0 +1,20 @@
+# Tout ce qui n'a rien à faire dans le contexte de build : sans ce fichier,
+# Docker envoie des centaines de Mo au démon à chaque construction.
+.venv/
+.git/
+.github/
+data/
+mlruns/
+mlartifacts/
+mlflow.db
+docs/
+tests/
+scripts/
+notebooks/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.md
+requirements-dev.txt
+requirements.lock.txt

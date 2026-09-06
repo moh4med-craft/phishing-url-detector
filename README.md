@@ -16,7 +16,7 @@ Le hameçonnage repose sur des URLs qui imitent des marques légitimes tout en r
 
 **scikit-learn plutôt qu'un réseau de neurones.** Sur 23 variables tabulaires et 11 429 exemples, les modèles à base d'arbres dominent, s'entraînent en moins d'une seconde, servent sur CPU en millisecondes et fournissent des importances de variables — ce qui compte en cybersécurité, où un analyste doit pouvoir justifier un blocage. Cinq configurations sont comparées, de la référence plancher (`DummyClassifier`) au TF-IDF de n-grammes de caractères.
 
-**MLflow** pour tracer les configurations comparées. **FastAPI** pour la validation Pydantic et la documentation automatiques, avec le modèle chargé une seule fois au démarrage via `lifespan`. **Docker multi-étapes** pour une image de production sans compilateur ni outillage de test.
+**MLflow** pour tracer les configurations comparées. **FastAPI** pour la validation Pydantic et la documentation automatiques, avec le modèle chargé une seule fois au démarrage via `lifespan`. **Docker multi-étapes** : l'étape de construction installe les dépendances, l'étape finale repart d'une base propre et ne copie que les paquets installés. Mesuré contre une version naïve (base complète, une seule étape, outillage de développement embarqué) : **720 Mo contre 3,24 Go**, soit 4,5 fois moins. L'image finale ne contient ni `gcc`, ni `pip`, ni `pytest`, ni `mlflow`, et le processus tourne en utilisateur non privilégié.
 
 ### Corpus
 
@@ -89,6 +89,18 @@ Deux réglages ont été nécessaires pour y arriver, et ils illustrent que les 
 | `/predict/batch` vectorisé (une passe au lieu d'une boucle) | 8,7 ms/URL | 0,12 ms/URL |
 
 Sur une seule URL, coordonner 300 arbres entre threads coûte sept fois plus cher que le calcul lui-même. Les prédictions sont identiques dans les deux cas : ce sont des optimisations de service, pas des changements de modèle.
+
+**Conteneur vérifié de bout en bout.** `docker compose up` sert l'API en **13,4 ms** par requête, contre 11,8 ms sur l'hôte — la surcharge de conteneurisation est négligeable. L'état de santé passe à `healthy`, le processus tourne en `appuser` (uid 1000) et non en root, et la prédiction renvoyée est identique à celle obtenue hors conteneur (`0.8975` dans les deux cas).
+
+| Vérification | Résultat |
+|---|---|
+| Taille de l'image | 720 Mo (naïve : 3,24 Go) |
+| Utilisateur du processus | `appuser` (uid 1000) |
+| `gcc` dans l'image finale | absent |
+| `pytest` / `mlflow` dans l'image finale | absents |
+| État de santé Docker | `healthy` |
+
+**74 tests** exécutés en 2,2 s.
 
 ### Ce qui ne marche pas
 
