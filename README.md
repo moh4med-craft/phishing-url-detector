@@ -123,7 +123,11 @@ Il n'a aucune notion de la structure d'une URL : il mémorise des sous-chaînes 
 
 **L'âge du domaine n'est pas implémenté.** Le corpus date de 2020 : un WHOIS effectué aujourd'hui attribuerait six ans d'ancienneté à un domaine qui en avait trois jours au moment de l'attaque — une fuite temporelle. S'y ajouteraient environ une seconde de latence par requête et une dépendance externe faillible.
 
-**Aucune défense contre un attaquant adaptatif.** Ces caractéristiques sont contournables par construction : raccourcir l'URL, éviter le vocabulaire sensible, acheter un TLD ordinaire.
+**Aucune défense contre un attaquant adaptatif.** Ces caractéristiques sont contournables par construction. Mesuré : sur huit URLs imitant simplement le profil d'un site légitime, **cinq passent au travers**. Pire, le modèle a appris que `www.` signifie « légitime » (66,8 % des URLs saines du corpus contre 20,5 % des hameçonnages) : ajouter ce préfixe divise le score par six et fait basculer le verdict.
+
+**Sur du trafic réel, dix-neuf alertes sur vingt seraient fausses.** Le corpus est équilibré 50/50, le trafic réel contient moins de 1 % de hameçonnage : à taux d'erreur identiques, la précision réelle tombe de 85,4 % à **5,6 %**. C'est l'effet du taux de base, inhérent à toute détection d'événement rare.
+
+> Le détail de ces analyses, le curseur du seuil de décision et les limites structurelles sont développés dans [REFLEXION.md](REFLEXION.md).
 
 ## Lancer le projet
 
