@@ -1,0 +1,62 @@
+{
+  "model_name": "03_random_forest",
+  "model_version": "0.1.0",
+  "trained_at": "2026-09-06T13:54:01+00:00",
+  "sklearn_version": "1.9.0",
+  "threshold": 0.5587,
+  "min_precision_target": 0.9,
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "n_dots",
+    "n_hyphens",
+    "n_digits",
+    "n_special_chars",
+    "path_depth",
+    "n_subdomains",
+    "tld_length",
+    "n_sensitive_words",
+    "digit_ratio",
+    "hostname_digit_ratio",
+    "hostname_entropy",
+    "has_ip",
+    "has_at",
+    "has_double_slash_in_path",
+    "has_port",
+    "is_https",
+    "is_punycode",
+    "is_shortener",
+    "has_suspicious_tld"
+  ],
+  "split": "GroupShuffleSplit par domaine enregistrable, 70/15/15",
+  "benchmark_only": [
+    "01_dummy_majoritaire",
+    "05_tfidf_char_logreg"
+  ],
+  "selection_note": "05_tfidf_char_logreg obtient le meilleur score interne mais 89,5 % de faux positifs sur le top Tranco : écarté de la production.",
+  "dataset": {
+    "n_urls": 11429,
+    "n_domains": 6572,
+    "n_train": 7698,
+    "n_val": 1741,
+    "n_test": 1990
+  },
+  "test_metrics": {
+    "test_recall": 0.787,
+    "test_precision": 0.898,
+    "test_f1": 0.8388,
+    "test_accuracy": 0.8181,
+    "test_pr_auc": 0.9453,
+    "test_roc_auc": 0.9206
+  },
+  "leakage_study": {
+    "metric": "PR-AUC de test, moyenne sur 5 tirages",
+    "grouped_split": 0.9051,
+    "grouped_split_std": 0.0248,
+    "random_split": 0.9538,
+    "random_split_std": 0.0045,
+    "overestimation": 0.0487
+  }
+}

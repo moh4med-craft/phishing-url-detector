@@ -6,3 +6,4 @@ mlruns/
 mlartifacts/
 .pytest_cache/
 PLAN.md
+mlflow.db

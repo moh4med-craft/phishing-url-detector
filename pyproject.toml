@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phishing-url-detector"
+version = "0.1.0"
+description = "Détecteur d'URL de hameçonnage, de l'entraînement au service"
+requires-python = ">=3.12"
+# Les dépendances vivent volontairement dans requirements.txt / requirements-dev.txt :
+# le Dockerfile copie requirements.txt SEUL avant le code source, ce qui permet à Docker
+# de mettre en cache la couche d'installation indépendamment de nos modifications de code.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
