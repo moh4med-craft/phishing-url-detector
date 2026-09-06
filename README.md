@@ -18,9 +18,9 @@ Le hameçonnage repose sur des URLs qui imitent des marques légitimes tout en r
 
 **MLflow** pour tracer les configurations comparées. **FastAPI** pour la validation Pydantic et la documentation automatiques, avec le modèle chargé une seule fois au démarrage via `lifespan`. **Docker multi-étapes** : l'étape de construction installe les dépendances, l'étape finale repart d'une base propre et ne copie que les paquets installés. Mesuré contre une version naïve (base complète, une seule étape, outillage de développement embarqué) : **720 Mo contre 3,24 Go**, soit 4,5 fois moins. L'image finale ne contient ni `gcc`, ni `pip`, ni `pytest`, ni `mlflow`, et le processus tourne en utilisateur non privilégié.
 
-**GitHub Actions** : `lint` (ruff) et `test` (pytest) tournent en parallèle, puis `docker` seulement si les deux passent — on ne construit pas d'image à partir de code cassé. Le job Docker ne se contente pas de construire : il vérifie que le processus tourne en `appuser`, que `gcc`, `pytest` et `mlflow` sont absents de l'image, et que l'API répond correctement à une vraie requête. Ce dernier test a d'abord échoué avec un `curl` en erreur 56 : Docker publie le port dès le démarrage, si bien que la connexion est *acceptée* puis coupée tant qu'uvicorn charge le modèle — `--retry-connrefused` ne couvre pas ce cas, `--retry-all-errors` si.
+**GitHub Actions** : `lint` (ruff) et `test` (pytest) tournent en parallèle, puis `docker` seulement si les deux passent — on ne construit pas d'image à partir de code cassé. Le job Docker ne se contente pas de construire : il vérifie que le processus tourne en `appuser`, que `gcc`, `pytest` et `mlflow` sont absents de l'image, et que l'API répond correctement à une vraie requête.
 
-Deux choix assumés côté outillage. Le **modèle est versionné dans le dépôt** (7,6 Mo compressés) pour que `docker compose up` fonctionne après un simple clone ; git n'est pas fait pour les binaires, mais à cette taille le compromis est raisonnable — en production, ce serait un registre de modèles. Et le **formateur automatique n'est pas imposé**, seul le linter l'est : `ruff format` éclaterait les tables de référence (TLD abusés, raccourcisseurs, suffixes composés) à raison d'une entrée par ligne, ce qui les rendrait moins lisibles. Le linter attrape de vrais défauts, le formateur n'est qu'une convention de style.
+Le **modèle est versionné dans le dépôt** (6,9 Mo compressés) pour que `docker compose up` fonctionne après un simple clone. Git n'est pas fait pour les binaires, mais à cette taille le compromis est raisonnable — en production, ce serait un registre de modèles.
 
 ### Corpus
 
@@ -41,11 +41,11 @@ PhishTank et Tranco servent **uniquement** à l'évaluation externe. Les utilise
                                       │  registrable_domain()
                    ┌──────────────────▼────────────────────────┐
    train.py  ─────▶│  GroupShuffleSplit par domaine  70/15/15  │
-                   │  N configurations tracées sous MLflow     │
+                   │  5 configurations tracées sous MLflow     │
                    └──────────────────┬────────────────────────┘
                                       │  joblib
                    ┌──────────────────▼────────────────────────┐
-   api.py    ─────▶│  Pipeline(features → scaler → modèle)     │
+   api.py    ─────▶│  Pipeline(features → RandomForest)        │
                    │  chargé une fois au démarrage (lifespan)  │
                    └──────────────────┬────────────────────────┘
                                       ▼
@@ -96,17 +96,9 @@ Deux réglages ont été nécessaires pour y arriver, et ils illustrent que les 
 
 Sur une seule URL, coordonner 300 arbres entre threads coûte sept fois plus cher que le calcul lui-même. Les prédictions sont identiques dans les deux cas : ce sont des optimisations de service, pas des changements de modèle.
 
-**Conteneur vérifié de bout en bout.** `docker compose up` sert l'API en **13,4 ms** par requête, contre 11,8 ms sur l'hôte — la surcharge de conteneurisation est négligeable. L'état de santé passe à `healthy`, le processus tourne en `appuser` (uid 1000) et non en root, et la prédiction renvoyée est identique à celle obtenue hors conteneur (`0.8975` dans les deux cas).
+**Conteneur vérifié de bout en bout.** `docker compose up` sert l'API en **13,4 ms** par requête contre 11,8 ms sur l'hôte, l'état de santé passe à `healthy`, et la prédiction est identique à celle obtenue hors conteneur (`0.8975` dans les deux cas) — la promesse de la conteneurisation, vérifiée plutôt que supposée.
 
-| Vérification | Résultat |
-|---|---|
-| Taille de l'image | 720 Mo (naïve : 3,24 Go) |
-| Utilisateur du processus | `appuser` (uid 1000) |
-| `gcc` dans l'image finale | absent |
-| `pytest` / `mlflow` dans l'image finale | absents |
-| État de santé Docker | `healthy` |
-
-**74 tests** exécutés en 2,2 s.
+**74 tests en 2,2 s** : extraction de caractéristiques (dont 13 entrées dégénérées qui ne doivent jamais lever), invariants du découpage anti-fuite, contrat de l'API, et non-régression du modèle expédié.
 
 ### Ce qui ne marche pas
 
@@ -140,3 +132,12 @@ docker compose up
 ```
 
 Puis http://localhost:8000/docs
+
+Pour reproduire l'entraînement et les mesures :
+
+```
+pip install -r requirements-dev.txt && pip install -e .
+python -m phishing_detector.train    # 5 configurations + étude de fuite (~20 s)
+python scripts/eval_external.py      # évaluation sur PhishTank et Tranco
+pytest                               # 74 tests
+```

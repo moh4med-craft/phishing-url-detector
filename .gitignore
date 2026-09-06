@@ -7,3 +7,7 @@ mlartifacts/
 .pytest_cache/
 PLAN.md
 mlflow.db
+*.egg-info/
+.ruff_cache/
+build/
+dist/

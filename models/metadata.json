@@ -1,7 +1,7 @@
 {
   "model_name": "03_random_forest",
   "model_version": "0.1.0",
-  "trained_at": "2026-09-06T13:54:01+00:00",
+  "trained_at": "2026-09-06T17:05:21+00:00",
   "sklearn_version": "1.9.0",
   "threshold": 0.5587,
   "min_precision_target": 0.9,
