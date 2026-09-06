@@ -79,7 +79,16 @@ PhishTank et Tranco servent **uniquement** à l'évaluation externe. Les utilise
 
 Le découpage aléatoire **surestime le modèle de 4,9 points** de PR-AUC. Il produit aussi un écart-type cinq fois plus faible : non seulement il flatte le score, mais il donne une fausse impression de stabilité, parce que chaque tirage réévalue les mêmes domaines.
 
-**Latence** : 19 µs pour l'extraction des caractéristiques, 0,1 s pour charger le modèle au démarrage — jamais par requête.
+**API et latence.** `POST /predict` répond en **11,8 ms** de bout en bout, `POST /predict/batch` en **0,12 ms par URL** sur un lot de 100. Le modèle est chargé une fois au démarrage (`lifespan`), en 0,1 s ; l'extraction des caractéristiques coûte 19 µs.
+
+Deux réglages ont été nécessaires pour y arriver, et ils illustrent que les paramètres optimaux à l'entraînement et au service diffèrent :
+
+| Réglage | Avant | Après |
+|---|---|---|
+| `n_jobs` de la forêt aléatoire (`-1` → `1`) | 65,8 ms | 11,8 ms |
+| `/predict/batch` vectorisé (une passe au lieu d'une boucle) | 8,7 ms/URL | 0,12 ms/URL |
+
+Sur une seule URL, coordonner 300 arbres entre threads coûte sept fois plus cher que le calcul lui-même. Les prédictions sont identiques dans les deux cas : ce sont des optimisations de service, pas des changements de modèle.
 
 ### Ce qui ne marche pas
 

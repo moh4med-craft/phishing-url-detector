@@ -331,6 +331,14 @@ def main() -> None:
     print(f"{'='*66}\n")
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    # n_jobs=-1 accélère l'ENTRAÎNEMENT mais détruit la latence de SERVICE :
+    # sur une seule URL, coordonner 300 arbres entre threads coûte 64 ms, contre
+    # 9 ms en séquentiel. Les paramètres optimaux à l'entraînement et au service
+    # ne sont pas les mêmes.
+    clf_final = final["pipe"].named_steps.get("clf")
+    if hasattr(clf_final, "n_jobs"):
+        clf_final.n_jobs = 1
+
     # compress=3 : 32 Mo -> 7 Mo, pour 0,1 s de chargement. Le modèle est
     # versionné dans le dépôt afin que `docker compose up` fonctionne après un
     # simple clone ; en production il viendrait d'un registre de modèles.
