@@ -6,6 +6,7 @@ mlruns/
 mlartifacts/
 .pytest_cache/
 PLAN.md
+plan_azure.md
 mlflow.db
 *.egg-info/
 .ruff_cache/
